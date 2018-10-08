@@ -1,0 +1,70 @@
+1、dubbox是dubbo的一个版本，它是针对于SOA架构的系统，实现系统表现层和服务层之间的关系调用。
+	dubbox使用rpc协议进行远程调用，直接使用socket通信，传输效率高。
+	而且它可以计算出系统之间的调用关系，可以管理服务，记录每个服务器被调用的次数，频率，以便于知道哪些服务需要做集群。
+	
+2、dubbox的原理：
+   存在的节点：服务提供方（服务层）、服务调用方（表现层），服务注册中心，服务运行容器，统计服务的调用次数和调用时间（监控中心）
+   1）、服务提供方在服务运行容器启动之后，会把所有的服务都在注册中心进行注册
+   2）、服务调用方在启动是，会向注册中心订阅自己所需要的服务，得到服务地址列表
+   3）、服务调用方从提供者地址列表中，基于软负载均衡算法，选一台提供者进行调用，如果调用失败，再选另一台调用
+   4）、表现层和服务层在内存中累计调用次数和调用时间，定时没分钟发送一次统计数据到监控中心，以便知道哪些服务被调用的频率高
+   
+3、dubbox的注册中心：Zookeeper  
+   Zookeeper 是 Apacahe Hadoop 的子项目，是一个树型的目录服务，支持变更推送，适合作为Dubbox 服务的注册中心，工业强度较高，可用于生产环境
+   Zookeeper的安装：
+		1).使用虚拟机打开linux镜像文件，这是一个linux系统，里面已经装好了jdk
+		2).修改虚拟系统的网络适配器  NAT：表示虚拟机中的系统和本机使用相同的网卡，本机能上网，那个系统也能上网
+		3).虚拟系统的网络编辑器选择 仅主机类型，子网ip改成25网段
+		
+4、1).使用SRT软件，连接linux系统，输入用户名和密码后，使用Alt+P键，切换到sftp控制台，将dubbox压缩包上传到linux系统中
+   2).解压文件之后，在文件目录下新建一个data文件夹，用来存放zookeeper的数据
+   3).进入conf文件夹，将zoo_sample.cfg 改名为 zoo.cfg，再修改 dataDir=/root/zookeeper-3.4.6/data(这里使用绝对路径)
+   4).启动zookeeper，进入bin目录，输入./zkServer.sh start启动zookeeper服务
+   5).配置eclipse中配置dubbox的离线约束，这里可以在eclipse中使用dubbox时，会有提示。将dubbox目录中的dubbo.xsd文件，配置到eclipse的XML catalog中，地址使用http://code.alibabatech.com/schema/dubbo/dubbo.xsd
+   
+5、dubbox demo
+   1).新建一个maven项目，作为服务提供层，打包方式为war包，里面写一个接口和实现类，返回一个String，在实现类上使用@Service注解，但是这个注解不能用原来的，要用alibaba.dubbo下面的
+   因为这个服务要注册到Zookeeper，不使用这个，注册不了
+   2).配置application-service.xml文件，配置这个服务在注册中心注册的名字，注册中心的地址，以及要将哪些包扫面进容器中
+   3).新建一个maven项目，作为服务消费层，打包方式war包，在里面创建一个controller类，而且要把服务层的接口也在这里写一遍(注意，是只写接口)
+   4).在controller中定义接口的对象实例，就可以调用接口中的方法了(以前使用的是@Autowired，现在要使用@Reference,表示远程注入)
+   5).测试dubbox demo，首先要保证zookeeper服务是开启的；然后先启动服务层代码，最后启动访问层代码
+   
+6、注册中心的管理中心
+   1).使用dubbox的源代码，对dubbo-admin目录下的代码进行maven 打包，打成war包
+   2).将打成的war包和linux系统下使用的tomcat7压缩包，使用SRT软件传到虚拟机系统中
+   3).将war包放入tomcat中，运行
+   4).在浏览器，访问虚拟机中的tomcat下的程序，使用虚拟机的ip地址，页面出现要输入用户名密码时，都输入root，就能看到管理中心的页面，访问地址：ip:8080/dubbo-admin
+   
+7、dubbox在服务层和表现层的配置使用
+	1).服务层(spring配置文件中):
+		<!-- 设置这个服务在注册中心的名字 -->
+		<dubbo:application name="dubboxdemo-service" />
+	
+		<!-- 设置注册中心的地址 -->
+		<dubbo:registry address="zookeeper://192.168.25.128:2181" />
+	
+		<!-- 设置要扫描到容器中的包的路径 -->
+		<dubbo:annotation package="com.itheima.demo.service.impl" />
+	
+	2).表现层(spring配置文件中):
+		<!-- 设置这个服务消费方在注册中心的名字 -->
+		<dubbo:application name="dubboxdemo-web" />
+
+		<!-- 设置注册中心的地址 -->
+		<dubbo:registry address="zookeeper://192.168.25.128:2181" />
+
+		<!-- 设置要扫描到容器中的包的路径 -->
+		<dubbo:annotation package="com.itheima.demo.controller" />
+		
+	使用以上的配置的方法，则在接口实现类中，使用@Service注解，但是这个注解不能用原来的，要用alibaba.dubbo下面的，
+						    在controller定义接口对象时，则不能使用@Autowired来自动注入，要使用dubbo下的@Refernce注解来远程引用
+							
+	3).如果在服务层加一个配置：
+		<!-- 服务配置，暴露一个服务到注册中心，这里指定服务的接口，以及服务这个对象bean的id是userServiceImpl -->
+		<dubbo:service interface="com.itheima.demo.service.UserService" ref="userServiceImpl"/>
+	   在表现层也加一个配置：
+	    <!-- 引用一个注册中心的服务，这里指定服务的接口，以及bean的id（这个id要和服务层定义的暴露服务的那个ref的值一样） -->
+		<dubbo:reference interface="com.itheima.demo.service.UserService" id="userServiceImpl"/>
+		
+	使用3)的方式配置后，则可以使用原来的@Service和@Autowired注解
