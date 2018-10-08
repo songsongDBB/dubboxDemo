@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:dubbo="http://code.alibabatech.com/schema/dubbo" xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd
+        http://code.alibabatech.com/schema/dubbo http://code.alibabatech.com/schema/dubbo/dubbo.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+
+	<mvc:annotation-driven>
+		<mvc:message-converters register-defaults="false">
+			<bean class="org.springframework.http.converter.StringHttpMessageConverter">
+				<constructor-arg value="UTF-8" />
+			</bean>
+		</mvc:message-converters>
+	</mvc:annotation-driven>
+
+
+	<!-- 设置这个服务消费方在注册中心的名字 -->
+	<dubbo:application name="dubboxdemo-web" />
+
+	<!-- 设置注册中心的地址 -->
+	<dubbo:registry address="zookeeper://192.168.25.128:2181" />
+
+	<!-- 设置要扫描到容器中的包的路径 -->
+	<dubbo:annotation package="com.itheima.demo.controller" />
+
+	<!-- 引用一个注册中心的服务，这里指定服务的接口，以及bean的id（这个id要和服务层定义的暴露服务的那个ref的值一样） -->
+	<dubbo:reference interface="com.itheima.demo.service.UserService" id="userServiceImpl"/>
+</beans>
