@@ -68,3 +68,5 @@
 		<dubbo:reference interface="com.itheima.demo.service.UserService" id="userServiceImpl"/>
 		
 	使用3)的方式配置后，则可以使用原来的@Service和@Autowired注解
+
+8、注意：要能在本机将服务注册到虚拟系统的zookeeper中，必须将虚拟系统的防火墙关掉
